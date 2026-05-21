@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MyDrama · AI Research Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;1,400&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#020617;--bg2:#0f172a;--bg3:#1e293b;--bg4:#0d1a2e;
+  --border:#1e293b;--border2:#334155;
+  --text:#f1f5f9;--text2:#94a3b8;--text3:#475569;
+  --red:#e11d48;--red-dim:#e11d4820;
+  --blue:#38bdf8;--purple:#a78bfa;--green:#4ade80;
+  --amber:#fbbf24;--pink:#f472b6;--teal:#2dd4bf;
+  --mono:'Space Mono',monospace;--sans:'DM Sans',sans-serif;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh}
+
+.header{border-bottom:1px solid var(--border);padding:14px 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--bg);z-index:10}
+.logo{font-family:var(--mono);font-size:12px;color:var(--red);letter-spacing:.08em}
+.htitle{font-size:15px;font-weight:600;margin-left:14px}
+.pills{display:flex;gap:6px;flex-wrap:wrap}
+.spill{font-size:11px;font-family:var(--mono);padding:3px 10px;border-radius:20px;border:1px solid;transition:all .3s}
+.spill.ai{color:#c4b5fd;border-color:#7c3aed40;background:#7c3aed15}
+.spill.live{color:#4ade80;border-color:#16a34a50;background:#16a34a15}
+.spill.warn{color:var(--amber);border-color:#92400e50;background:#92400e15}
+
+.layout{display:grid;grid-template-columns:290px 1fr;min-height:calc(100vh - 53px)}
+
+.sidebar{border-right:1px solid var(--border);padding:18px;display:flex;flex-direction:column;gap:14px;overflow-y:auto}
+.flabel{font-size:10px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:6px}
+select,input[type=password],input[type=text]{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:8px 10px;color:var(--text);font-size:12px;font-family:var(--sans);outline:none;transition:border-color .2s}
+select:focus,input:focus{border-color:var(--red)}
+option{background:var(--bg2)}
+.tags{display:flex;flex-wrap:wrap;gap:4px}
+.tag{font-size:11px;padding:5px 10px;border-radius:20px;border:1px solid var(--border2);color:var(--text3);cursor:pointer;transition:all .15s;background:transparent;font-family:var(--sans)}
+.tag.on{border-color:var(--red);color:#fca5a5;background:var(--red-dim)}
+.api-note{font-size:10px;color:var(--text3);line-height:1.5;margin-top:4px}
+.api-note a{color:var(--blue);text-decoration:none}
+.run-btn{width:100%;padding:11px;font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;background:var(--red);color:#fff;border:none;border-radius:6px;cursor:pointer;transition:all .2s}
+.run-btn:hover{background:#be123c}
+.run-btn:disabled{background:var(--bg3);color:var(--text3);cursor:not-allowed}
+
+.main{display:flex;flex-direction:column;overflow:hidden}
+.tab-bar{display:flex;border-bottom:1px solid var(--border);padding:0 20px;background:var(--bg);flex-shrink:0;overflow-x:auto}
+.tbtn{font-size:12px;font-weight:600;padding:13px 14px;border:none;background:none;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap;font-family:var(--sans)}
+.tbtn.on{color:var(--text);border-bottom-color:var(--red)}
+.tbtn:hover:not(.on){color:var(--text2)}
+.content{padding:20px 24px;overflow-y:auto;flex:1}
+
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;min-height:400px;gap:10px;text-align:center}
+.etitle{font-size:14px;color:var(--text2);font-weight:500}
+.esub{font-size:12px;color:var(--text3)}
+.loader{display:flex;align-items:center;gap:10px;padding:40px 0;font-size:13px;color:var(--text3)}
+.dots{display:flex;gap:4px}
+.dot{width:5px;height:5px;border-radius:50%;background:var(--red);animation:pulse 1.2s ease-in-out infinite}
+.dot:nth-child(2){animation-delay:.2s}.dot:nth-child(3){animation-delay:.4s}
+@keyframes pulse{0%,100%{opacity:.2}50%{opacity:1}}
+
+.shead{font-size:10px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px}
+
+/* KPI BAR */
+.kpi-bar{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:20px}
+.kpi{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px 14px}
+.kpi-label{font-size:10px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px}
+.kpi-val{font-size:20px;font-weight:700}
+.kpi-sub{font-size:11px;color:var(--text3);margin-top:3px}
+
+/* TREND BADGE */
+.trend-up{color:var(--green);font-size:11px}
+.trend-down{color:#f87171;font-size:11px}
+.trend-flat{color:var(--amber);font-size:11px}
+
+/* PLAYBOOK */
+.playbook{background:var(--bg2);border:1px solid var(--border);border-radius:8px;margin-bottom:10px;overflow:hidden}
+.pb-head{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:10px}
+.pb-num{width:26px;height:26px;border-radius:50%;background:var(--red);color:#fff;font-size:11px;font-family:var(--mono);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:700}
+.pb-title{font-size:14px;font-weight:600;color:var(--text)}
+.pb-body{padding:14px 16px}
+.pb-hook{font-size:14px;color:var(--text);line-height:1.6;margin-bottom:10px;padding:12px 16px;background:var(--bg3);border-radius:6px;border-left:3px solid var(--red);font-style:italic}
+
+/* TIMING BREAKDOWN */
+.timing-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px}
+.timing-cell{background:var(--bg3);border-radius:6px;padding:8px 10px;border-top:2px solid}
+.timing-label{font-size:9px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;margin-bottom:4px}
+.timing-text{font-size:11px;color:var(--text2);line-height:1.4}
+
+/* PLATFORM FIT */
+.platform-row{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.pfr{display:flex;align-items:center;gap:6px;background:var(--bg3);border-radius:6px;padding:6px 10px}
+.pfr-label{font-size:11px;color:var(--text3)}
+.pfr-score{font-size:13px;font-weight:700}
+.pfr-bar{height:4px;border-radius:2px;margin-top:3px;background:var(--border2);width:60px}
+.pfr-fill{height:4px;border-radius:2px}
+
+/* SCRIPT SNIPPET */
+.script-box{background:#0a0f1a;border:1px solid var(--border2);border-radius:6px;padding:12px 14px;margin-bottom:12px;font-family:var(--mono);font-size:11px;line-height:1.8;color:var(--text2)}
+.script-action{color:var(--text3);font-style:italic}
+.script-char{color:var(--amber);font-weight:700}
+.script-line{color:var(--text)}
+
+/* EMOTION MAP */
+.emotion-map{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.emotion-chip{font-size:11px;padding:4px 10px;border-radius:4px;font-weight:500}
+
+/* SERIES CARD */
+.scard{background:var(--bg2);border:1px solid var(--border);border-radius:8px;margin-bottom:10px;overflow:hidden}
+.scard-head{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.scard-title{font-size:14px;font-weight:600;color:var(--text)}
+.scard-meta{display:flex;gap:10px;flex-shrink:0}
+.smeta-item{text-align:right}
+.smeta-label{font-size:9px;font-family:var(--mono);color:var(--text3);text-transform:uppercase}
+.smeta-val{font-size:15px;font-weight:700}
+.scard-body{padding:14px 16px}
+.hooks-title{font-size:10px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+.hook-card{background:var(--bg4);border:1px solid var(--border);border-radius:6px;padding:10px 12px;margin-bottom:6px}
+.hook-type{font-size:10px;font-family:var(--mono);padding:2px 7px;border-radius:20px;margin-bottom:6px;display:inline-block}
+.hook-type.visual{background:#1e3a5f;color:var(--blue)}
+.hook-type.dialogue{background:#2d1a4a;color:var(--purple)}
+.hook-type.conflict{background:#450a0a;color:#fca5a5}
+.hook-type.emotion{background:#14532d;color:#86efac}
+.hook-type.cliffhanger{background:#451a03;color:var(--amber)}
+.hook-text{font-size:13px;color:var(--text);line-height:1.5;margin-bottom:6px}
+.hook-why{font-size:11px;color:var(--text3);font-style:italic;line-height:1.4}
+.hook-metrics{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+.hm{font-size:11px;padding:2px 8px;border-radius:4px;background:var(--bg3);color:var(--text2)}
+
+/* COMPETITOR */
+.comp-card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;margin-bottom:8px;overflow:hidden}
+.comp-head{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.comp-name{font-size:13px;font-weight:600;color:var(--text)}
+.comp-platform{font-size:10px;padding:2px 7px;border-radius:4px;background:var(--bg3);color:var(--text3)}
+.comp-body{padding:12px 16px}
+.comp-gap{font-size:12px;padding:8px 12px;background:#450a0a30;border-left:2px solid var(--red);border-radius:4px;color:#fca5a5;margin-top:8px}
+
+/* ORGANIC */
+.ocard{background:var(--bg2);border:1px solid var(--border);border-radius:8px;margin-bottom:10px;overflow:hidden}
+.ocard-head{padding:12px 16px;display:flex;align-items:flex-start;gap:10px;border-bottom:1px solid var(--border)}
+.ocard-body{padding:12px 16px}
+.ocard-hook{font-size:13px;color:var(--text);line-height:1.5;margin-bottom:8px}
+.ocard-why{font-size:12px;color:var(--text3);font-style:italic;line-height:1.4;margin-bottom:8px;padding-left:10px;border-left:2px solid var(--red)}
+.scene-template{font-size:12px;color:var(--green);padding:8px 12px;background:#14532d20;border-radius:4px;margin-bottom:8px}
+.ometrics{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+
+.badge{font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;vertical-align:middle}
+.b-gold{background:#92400e40;color:var(--amber);border:1px solid #92400e60}
+.b-tk{background:#be185d20;color:var(--pink)}
+.b-ig{background:#92400e20;color:#fb923c}
+.b-yt{background:#991b1b20;color:#f87171}
+.b-paid{background:#1e3a5f;color:var(--blue)}
+.b-org{background:#14532d;color:var(--green)}
+.htag{font-size:11px;color:var(--teal);margin-right:6px}
+.chip{font-size:11px;padding:3px 8px;border-radius:4px;background:var(--bg3);border:1px solid var(--border2);color:var(--text3);margin:2px;display:inline-block}
+
+/* SUMMARY */
+.sum-card{background:var(--bg2);border:1px solid #4c1d9540;border-radius:8px;padding:18px 20px}
+.sum-section{margin-bottom:16px}
+.sum-label{font-size:10px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+.hpill{display:inline-block;font-size:11px;padding:4px 10px;border-radius:4px;background:#14532d;color:#86efac;margin:2px}
+.apill{display:inline-block;font-size:11px;padding:4px 10px;border-radius:4px;background:#450a0a;color:#fca5a5;margin:2px}
+.rec{border-top:1px solid var(--border);padding-top:14px;font-size:13px;color:var(--text);line-height:1.7}
+.cnote{background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:10px 14px;margin-top:10px;font-size:12px;color:var(--text2);line-height:1.6}
+.cnote strong{color:var(--text)}
+
+/* TYPES */
+.tcard{border-radius:8px;padding:14px 16px;margin-bottom:10px;border:1px solid}
+.tcard.tp{border-color:#1e40af40;background:#1e3a5f20}
+.tcard.to{border-color:#92400e40;background:#92400e15}
+.tcard.tv{border-color:#7c3aed40;background:#7c3aed10}
+.ttitle{font-size:13px;font-weight:600;margin-bottom:6px}
+.tdesc{font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:10px}
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div style="display:flex;align-items:center">
+    <span class="logo">MYDRAMA ✦ HOLYWATER</span>
+    <span class="htitle">AI Research Dashboard</span>
+  </div>
+  <div class="pills">
+    <span class="spill ai" id="pill-sp">○ Social Peta · AI sim</span>
+    <span class="spill ai" id="pill-ap">○ Apify · AI sim</span>
+    <span class="spill ai" id="pill-drive" style="display:none">○ Drive · —</span>
+  </div>
+</header>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div>
+      <label class="flabel">Setting ✦</label>
+      <select id="setting">
+        <option value="">Select...</option>
+        <option>Mafia</option><option>Historical</option><option>Sports</option>
+        <option>Fantasy</option><option>Office</option><option>Vampire</option>
+        <option>Royal Court</option><option>Small Town</option><option>Medical</option>
+        <option>Military</option><option>College</option><option>Supernatural</option>
+      </select>
+    </div>
+    <div>
+      <label class="flabel">Genre / Tropes ✦</label>
+      <div class="tags" id="tagRow">
+        <div class="tag" data-v="Romance">Romance</div>
+        <div class="tag" data-v="Revenge">Revenge</div>
+        <div class="tag" data-v="Billionaire">Billionaire</div>
+        <div class="tag" data-v="Enemies-to-Lovers">Enemies-to-Lovers</div>
+        <div class="tag" data-v="Thriller">Thriller</div>
+        <div class="tag" data-v="Found Family">Found Family</div>
+        <div class="tag" data-v="Forbidden Love">Forbidden Love</div>
+        <div class="tag" data-v="Second Chance">Second Chance</div>
+        <div class="tag" data-v="Dark Romance">Dark Romance</div>
+        <div class="tag" data-v="Fake Dating">Fake Dating</div>
+        <div class="tag" data-v="Forced Proximity">Forced Proximity</div>
+        <div class="tag" data-v="Alpha Male">Alpha Male</div>
+      </div>
+    </div>
+    <div>
+      <label class="flabel">Target Platform</label>
+      <select id="targetPlatform">
+        <option value="all">All platforms</option>
+        <option value="TikTok">TikTok</option>
+        <option value="Instagram Reels">Instagram Reels</option>
+        <option value="YouTube Shorts">YouTube Shorts</option>
+      </select>
+    </div>
+    <div>
+      <label class="flabel">Internal Base — Google Drive</label>
+      <input type="text" id="driveUrl" placeholder="Paste Google Doc / Sheet link">
+      <p class="api-note">File → Share → <strong style="color:var(--text2)">Anyone with link</strong> → copy URL</p>
+      <div id="driveStatus" style="display:none;margin-top:6px;font-size:11px;padding:4px 8px;border-radius:4px"></div>
+    </div>
+    <div>
+      <label class="flabel">API Keys</label>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div>
+          <label class="flabel" style="margin-bottom:4px">Social Peta</label>
+          <input type="password" id="spKey" placeholder="sp_live_xxxx">
+          <p class="api-note">Add when you get access</p>
+        </div>
+        <div>
+          <label class="flabel" style="margin-bottom:4px">Apify Token</label>
+          <input type="password" id="apifyKey" placeholder="apify_api_xxxx">
+          <p class="api-note"><a href="https://console.apify.com/account/integrations" target="_blank">console.apify.com</a> → Settings → Integrations</p>
+        </div>
+      </div>
+    </div>
+    <button class="run-btn" id="runBtn" onclick="handleRun()">✦ RUN RESEARCH</button>
+  </aside>
+
+  <main class="main">
+    <nav class="tab-bar" id="tabBar" style="display:none">
+      <button class="tbtn on" data-tab="playbook" onclick="setTab('playbook')">🎯 Hook Playbook</button>
+      <button class="tbtn" data-tab="paid" onclick="setTab('paid')">📊 Social Peta</button>
+      <button class="tbtn" data-tab="organic" onclick="setTab('organic')">🎬 Organic</button>
+      <button class="tbtn" data-tab="competitors" onclick="setTab('competitors')">🔍 Competitors</button>
+      <button class="tbtn" data-tab="internal" onclick="setTab('internal')">🗂 Internal Base</button>
+      <button class="tbtn" data-tab="types" onclick="setTab('types')">📖 Content Types</button>
+      <button class="tbtn" data-tab="summary" onclick="setTab('summary')">✦ AI Summary</button>
+    </nav>
+    <div class="content" id="mainContent">
+      <div class="empty">
+        <div style="font-size:36px;opacity:.15">✦</div>
+        <div class="etitle">Select setting and genre</div>
+        <div class="esub">Click "Run Research" to generate your creative brief</div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+const sel = new Set();
+let activeTab = 'playbook';
+let lastData = null;
+
+document.querySelectorAll('.tag').forEach(t => {
+  t.addEventListener('click', () => {
+    t.classList.toggle('on');
+    sel.has(t.dataset.v) ? sel.delete(t.dataset.v) : sel.add(t.dataset.v);
+  });
+});
+
+function setTab(name) {
+  activeTab = name;
+  document.querySelectorAll('.tbtn').forEach(b => b.classList.toggle('on', b.dataset.tab === name));
+  if (lastData) renderPanel(name, lastData);
+}
+
+async function handleRun() {
+  const setting = document.getElementById('setting').value;
+  if (!setting || sel.size === 0) { alert('Select a setting and at least one genre'); return; }
+  const spKey        = document.getElementById('spKey').value.trim();
+  const apifyKey     = document.getElementById('apifyKey').value.trim();
+  const driveUrl     = document.getElementById('driveUrl').value.trim();
+  const targetPlatform = document.getElementById('targetPlatform').value;
+  const genres       = Array.from(sel).join(', ');
+
+  setLoading(true);
+  updatePills('checking','checking');
+
+  try {
+    const [spData, apifyData, driveText] = await Promise.all([
+      spKey    ? fetchSocialPeta(spKey, setting, genres)  : Promise.resolve(null),
+      apifyKey ? fetchApify(apifyKey, setting, genres)    : Promise.resolve(null),
+      driveUrl ? fetchGoogleDrive(driveUrl)               : Promise.resolve(null),
+    ]);
+
+    updatePills(spData ? 'live' : 'ai', apifyData ? 'live' : 'ai');
+
+    const drivePill = document.getElementById('pill-drive');
+    drivePill.style.display = 'inline-block';
+    if (driveText) {
+      drivePill.className = 'spill live';
+      drivePill.textContent = '● Drive · live';
+      showDriveStatus('✓ Document read — ' + driveText.length + ' chars', 'ok');
+    } else if (driveUrl) {
+      drivePill.className = 'spill warn';
+      drivePill.textContent = '○ Drive · error';
+      showDriveStatus('⚠ Could not read. Check: File → Share → Anyone with link', 'err');
+    }
+
+    setLoaderMsg('✨ Generating hook analysis & scripts...');
+    const aiData = await fetchAI(setting, genres, targetPlatform, driveText);
+
+    lastData = {
+      paid:        spData    || aiData.paid,
+      organic:     apifyData ? [...apifyData, ...aiData.organic.slice(apifyData.length)] : aiData.organic,
+      internal:    aiData.internal,
+      competitors: aiData.competitors,
+      playbook:    aiData.playbook,
+      kpis:        aiData.kpis,
+      summary:     aiData.summary,
+      driveUsed:   !!driveText,
+      setting, genres, targetPlatform,
+    };
+
+    setLoading(false);
+    document.getElementById('tabBar').style.display = 'flex';
+    setTab('playbook');
+  } catch(e) {
+    setLoading(false);
+    showError(e.message);
+  }
+}
+
+// ─── SOURCES ──────────────────────────────────────────────
+async function fetchSocialPeta(key, setting, genres) {
+  setLoaderMsg('⏳ Connecting to Social Peta...');
+  try {
+    const r = await fetch(`https://api.socialpeta.com/v2/creatives/search?` + new URLSearchParams({
+      keyword:`${setting} ${genres}`,sort:'impressions',limit:'25',type:'video'
+    }), { headers:{'Authorization':`Bearer ${key}`} });
+    if (!r.ok) return null;
+    const d = await r.json();
+    if (!d.creatives?.length) return null;
+    const byAdv = {};
+    d.creatives.forEach(c => {
+      const k = c.advertiser_name || 'Unknown';
+      if (!byAdv[k]) byAdv[k] = {title:k,imp:0,days:0,gold:false,cres:[]};
+      byAdv[k].imp  = Math.max(byAdv[k].imp,  c.impressions||0);
+      byAdv[k].days = Math.max(byAdv[k].days, c.run_days||0);
+      byAdv[k].gold = byAdv[k].gold||(c.rank_rate<=0.1);
+      byAdv[k].cres.push({text:c.creative_text||c.title||'',days:c.run_days||0,imp:c.impressions||0});
+    });
+    return Object.values(byAdv).sort((a,b)=>b.imp-a.imp).slice(0,5).map(s=>({
+      title:s.title, impressions:fmtN(s.imp), run_days:s.days, gold_frame:s.gold,
+      hooks:s.cres.slice(0,5).map(c=>({text:c.text,days:c.days,impressions:fmtN(c.imp),type:'cliffhanger',why:'High run duration = strong retention'}))
+    }));
+  } catch { return null; }
+}
+
+async function fetchApify(token, setting, genres) {
+  setLoaderMsg('⏳ Scraping TikTok / Instagram...');
+  const PROXY = '/.netlify/functions/apify-proxy';
+  try {
+    const tag = (setting+genres.split(',')[0]).toLowerCase().replace(/[^a-z]/g,'');
+    const startR = await fetch(PROXY, {
+      method:'POST', headers:{'Content-Type':'application/json','x-api-key':'REPLACE_KEY_HERE','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body: JSON.stringify({ action:'start', token, hashtags:[tag, setting.toLowerCase()] })
+    });
+    if (!startR.ok) return null;
+    const startData = await startR.json();
+    const runId = startData?.data?.id;
+    if (!runId) return null;
+    for (let i=0;i<18;i++) {
+      await sleep(5000);
+      const statusR = await fetch(PROXY, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ action:'status', token, runId })
+      });
+      const statusData = await statusR.json();
+      const st = statusData?.data;
+      if (st?.status==='SUCCEEDED') {
+        const resultsR = await fetch(PROXY, {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ action:'results', token, datasetId: st.defaultDatasetId })
+        });
+        const items = await resultsR.json();
+        return items.filter(v=>(v.playCount||0)>=1000000)
+          .sort((a,b)=>(b.playCount||0)-(a.playCount||0)).slice(0,5)
+          .map(v=>({
+            title:(v.text||'TikTok video').slice(0,60), platform:'TikTok',
+            views:fmtN(v.playCount||0),
+            er:v.playCount?((v.diggCount||0)/v.playCount*100).toFixed(1)+'%':'n/a',
+            shares:fmtN(v.shareCount||0), comments:fmtN(v.commentCount||0),
+            hook:(v.text||'').split(/[.!?]/)[0].slice(0,80),
+            hook_type:'visual', why:'Organic viral — no ad spend, pure emotional trigger',
+            hashtags:(v.hashtags||[]).slice(0,4).map(h=>h.name||h),
+            url:v.webVideoUrl||''
+          }));
+      }
+      if (st?.status==='FAILED'||st?.status==='ABORTED') return null;
+    }
+    return null;
+  } catch { return null; }
+}
+
+async function fetchGoogleDrive(url) {
+  setLoaderMsg('⏳ Reading Google Drive document...');
+  try {
+    const id = extractDriveId(url);
+    if (!id) { showDriveStatus('⚠ Could not extract file ID from URL', 'err'); return null; }
+    const r = await fetch(`https://docs.google.com/document/d/${id}/export?format=txt`);
+    if (!r.ok) {
+      const r2 = await fetch(`https://docs.google.com/spreadsheets/d/${id}/export?format=csv`);
+      if (!r2.ok) return null;
+      return (await r2.text()).slice(0, 8000);
+    }
+    return (await r.text()).slice(0, 8000);
+  } catch { return null; }
+}
+
+function extractDriveId(url) {
+  for (const p of [/\/d\/([a-zA-Z0-9_-]{25,})/,/id=([a-zA-Z0-9_-]{25,})/,/\/folders\/([a-zA-Z0-9_-]{25,})/]) {
+    const m = url.match(p); if (m) return m[1];
+  }
+  return null;
+}
+
+function showDriveStatus(msg, type) {
+  const el = document.getElementById('driveStatus');
+  el.style.display='block';
+  el.style.background = type==='ok'?'#14532d40':'#450a0a40';
+  el.style.color = type==='ok'?'#86efac':'#fca5a5';
+  el.textContent = msg;
+}
+
+// ─── CLAUDE AI ────────────────────────────────────────────
+async function fetchAI(setting, genres, platform, driveText) {
+  const driveCtx = driveText
+    ? "\n\nINTERNAL BASE (real data from team Google Drive):\n---\n" + driveText + "\n---"
+    : "";
+
+  const prompt = "You are a senior creative producer at MyDrama vertical drama platform. Generate ACTIONABLE research. Return ONLY valid JSON, no markdown, no backticks.\n\nSetting: " + setting + "\nGenres: " + genres + "\nPlatform: " + platform + driveCtx + "\n\nReturn this JSON structure exactly:\n{\"kpis\":{\"market_size\":\"2.4B monthly views\",\"avg_er\":\"7.2%\",\"trend\":\"rising\",\"trend_note\":\"one sentence\",\"top_emotion\":\"jealousy\",\"optimal_hook_window\":\"first 2.5 seconds\"},\"playbook\":[{\"rank\":1,\"hook_title\":\"title\",\"hook_text\":\"SPECIFIC scene description\",\"hook_type\":\"cliffhanger\",\"timing\":{\"sec_0_3\":\"action\",\"sec_3_7\":\"action\",\"sec_7_15\":\"action\",\"sec_15_plus\":\"action\"},\"platform_fit\":{\"TikTok\":85,\"Instagram\":72,\"YouTube\":60},\"emotion\":\"jealousy\",\"why_works\":\"psychological reason\",\"script_snippet\":{\"action\":\"scene direction\",\"character_a\":\"Name\",\"line_a\":\"dialogue\",\"character_b\":\"Name\",\"line_b\":\"dialogue\"},\"expected_er\":\"6-9%\",\"expected_views\":\"2-5M\",\"references\":[\"proof\"],\"avoid\":\"mistake\"}],\"paid\":[{\"title\":\"Series Name\",\"impressions\":\"45M\",\"run_days\":42,\"gold_frame\":true,\"ctr\":\"3.2%\",\"completion_rate\":\"67%\",\"hooks\":[{\"text\":\"hook\",\"type\":\"cliffhanger\",\"timing\":\"0-3 sec\",\"why\":\"reason\",\"impressions\":\"12M\",\"run_days\":38}]}],\"organic\":[{\"title\":\"video\",\"platform\":\"TikTok\",\"views\":\"3.2M\",\"er\":\"8.4%\",\"shares\":\"45K\",\"comments\":\"12K\",\"hook\":\"hook text\",\"hook_type\":\"dialogue\",\"why\":\"reason\",\"emotion\":\"jealousy\",\"scene_template\":\"template\",\"hashtags\":[\"tag\"]}],\"competitors\":[{\"name\":\"ReelShort\",\"platform\":\"ReelShort\",\"genre_match\":\"match\",\"monthly_views\":\"500M\",\"top_hook\":\"their hook\",\"strength\":\"what they do well\",\"gap\":\"what we can own\"}],\"internal\":[{\"title\":\"concept\",\"type\":\"paid\",\"result\":\"metric\",\"hooks\":[{\"text\":\"hook\",\"type\":\"conflict\",\"performance\":\"metric\"}]}],\"summary\":{\"market_size\":\"2.4B\",\"top_emotion\":\"jealousy\",\"avg_hook_timing\":\"2.5 sec\",\"patterns\":\"2-3 sentences\",\"working_hooks\":[\"hook1\",\"hook2\",\"hook3\",\"hook4\"],\"avoid\":[\"mistake1\",\"mistake2\"],\"recommendation\":\"specific recommendation\"}}\n\nBe SPECIFIC for " + setting + " + " + genres + ". 5 items each for paid/organic/internal/competitors, 5 for playbook.";
+
+  const r = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': 'REPLACE_KEY_HERE',
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 2500,
+      messages: [{ role: 'user', content: prompt }]
+    })
+  });
+  const d = await r.json();
+  const txt = d.content?.find(b => b.type === 'text')?.text || '';
+  return JSON.parse(txt.replace(/```json|```/g, '').trim());
+}
