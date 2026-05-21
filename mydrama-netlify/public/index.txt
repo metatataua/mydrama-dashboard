@@ -1,0 +1,41 @@
+MYDRAMA ✦ HOLYWATER
+AI Research Dashboard
+○ Social Peta · AI sim
+○ Spiffy · AI sim
+SETTING ✦
+        Select...
+        MafiaHistoricalSports
+        FantasyOfficeVampire
+        Royal CourtSmall TownMedical
+        MilitaryCollegeSupernatural
+      
+GENRE / TROPES ✦
+Romance
+Revenge
+Billionaire
+Enemies-to-Lovers
+Thriller
+Found Family
+Forbidden Love
+Second Chance
+Dark Romance
+Fake Dating
+Forced Proximity
+Alpha Male
+TARGET PLATFORM
+        All platforms
+        TikTok
+        Instagram Reels
+        YouTube Shorts
+      
+INTERNAL BASE — GOOGLE DRIVE
+File → Share → Anyone with link → copy URL
+API KEYS
+SOCIAL PETA
+Add when you get access
+APIFY TOKEN
+console.apify.com → Settings → Integrations
+✦ RUN RESEARCH
+✦
+Select setting and genre
+Click "Run Research" to generate your creative brief
