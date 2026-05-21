@@ -452,7 +452,7 @@ async function fetchAI(setting, genres, platform, driveText) {
     ? `\n\nINTERNAL BASE (real data from team Google Drive — use as primary source for "internal" section and enrich playbook with patterns from this):\n---\n${driveText}\n---`
     : '';
 
-  const r = await fetch('https://api.anthropic.com/v1/messages', {
+  const r = await fetch('/.netlify/functions/claude-proxy', {
     method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({
       model:'claude-sonnet-4-20250514', max_tokens:2500,
