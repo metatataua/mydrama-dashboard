@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MyDrama · AI Research Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;1,400&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#020617;--bg2:#0f172a;--bg3:#1e293b;--bg4:#0d1a2e;
+  --border:#1e293b;--border2:#334155;
+  --text:#f1f5f9;--text2:#94a3b8;--text3:#475569;
+  --red:#e11d48;--red-dim:#e11d4820;
+  --blue:#38bdf8;--purple:#a78bfa;--green:#4ade80;
+  --amber:#fbbf24;--pink:#f472b6;--teal:#2dd4bf;
+  --mono:'Space Mono',monospace;--sans:'DM Sans',sans-serif;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh}
+
+.header{border-bottom:1px solid var(--border);padding:14px 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--bg);z-index:10}
+.logo{font-family:var(--mono);font-size:12px;color:var(--red);letter-spacing:.08em}
+.htitle{font-size:15px;font-weight:600;margin-left:14px}
+.pills{display:flex;gap:6px;flex-wrap:wrap}
+.spill{font-size:11px;font-family:var(--mono);padding:3px 10px;border-radius:20px;border:1px solid;transition:all .3s}
+.spill.ai{color:#c4b5fd;border-color:#7c3aed40;background:#7c3aed15}
+.spill.live{color:#4ade80;border-color:#16a34a50;background:#16a34a15}
+.spill.warn{color:var(--amber);border-color:#92400e50;background:#92400e15}
+
+.layout{display:grid;grid-template-columns:290px 1fr;min-height:calc(100vh - 53px)}
+
+.sidebar{border-right:1px solid var(--border);padding:18px;display:flex;flex-direction:column;gap:14px;overflow-y:auto}
+.flabel{font-size:10px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:6px}
+select,input[type=password],input[type=text]{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:8px 10px;color:var(--text);font-size:12px;font-family:var(--sans);outline:none;transition:border-color .2s}
+select:focus,input:focus{border-color:var(--red)}
+option{background:var(--bg2)}
+.tags{display:flex;flex-wrap:wrap;gap:4px}
+.tag{font-size:11px;padding:5px 10px;border-radius:20px;border:1px solid var(--border2);color:var(--text3);cursor:pointer;transition:all .15s;background:transparent;font-family:var(--sans)}
+.tag.on{border-color:var(--red);color:#fca5a5;background:var(--red-dim)}
+.api-note{font-size:10px;color:var(--text3);line-height:1.5;margin-top:4px}
+.api-note a{color:var(--blue);text-decoration:none}
+.run-btn{width:100%;padding:11px;font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;background:var(--red);color:#fff;border:none;border-radius:6px;cursor:pointer;transition:all .2s}
+.run-btn:hover{background:#be123c}
+.run-btn:disabled{background:var(--bg3);color:var(--text3);cursor:not-allowed}
+
+.main{display:flex;flex-direction:column;overflow:hidden}
+.tab-bar{display:flex;border-bottom:1px solid var(--border);padding:0 20px;background:var(--bg);flex-shrink:0;overflow-x:auto}
+.tbtn{font-size:12px;font-weight:600;padding:13px 14px;border:none;background:none;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap;font-family:var(--sans)}
+.tbtn.on{color:var(--text);border-bottom-color:var(--red)}
+.tbtn:hover:not(.on){color:var(--text2)}
+.content{padding:20px 24px;overflow-y:auto;flex:1}
+
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;min-height:400px;gap:10px;text-align:center}
+.etitle{font-size:14px;color:var(--text2);font-weight:500}
+.esub{font-size:12px;color:var(--text3)}
+.loader{display:flex;align-items:center;gap:10px;padding:40px 0;font-size:13px;color:var(--text3)}
+.dots{display:flex;gap:4px}
+.dot{width:5px;height:5px;border-radius:50%;background:var(--red);animation:pulse 1.2s ease-in-out infinite}
+.dot:nth-child(2){animation-delay:.2s}.dot:nth-child(3){animation-delay:.4s}
+@keyframes pulse{0%,100%{opacity:.2}50%{opacity:1}}
+
+.shead{font-size:10px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px}
+
+/* KPI BAR */
+.kpi-bar{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:20px}
+.kpi{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px 14px}
+.kpi-label{font-size:10px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px}
+.kpi-val{font-size:20px;font-weight:700}
+.kpi-sub{font-size:11px;color:var(--text3);margin-top:3px}
+
+/* TREND BADGE */
+.trend-up{color:var(--green);font-size:11px}
+.trend-down{color:#f87171;font-size:11px}
+.trend-flat{color:var(--amber);font-size:11px}
+
+/* PLAYBOOK */
+.playbook{background:var(--bg2);border:1px solid var(--border);border-radius:8px;margin-bottom:10px;overflow:hidden}
+.pb-head{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:10px}
+.pb-num{width:26px;height:26px;border-radius:50%;background:var(--red);color:#fff;font-size:11px;font-family:var(--mono);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:700}
+.pb-title{font-size:14px;font-weight:600;color:var(--text)}
+.pb-body{padding:14px 16px}
+.pb-hook{font-size:14px;color:var(--text);line-height:1.6;margin-bottom:10px;padding:12px 16px;background:var(--bg3);border-radius:6px;border-left:3px solid var(--red);font-style:italic}
+
+/* TIMING BREAKDOWN */
+.timing-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px}
+.timing-cell{background:var(--bg3);border-radius:6px;padding:8px 10px;border-top:2px solid}
+.timing-label{font-size:9px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;margin-bottom:4px}
+.timing-text{font-size:11px;color:var(--text2);line-height:1.4}
+
+/* PLATFORM FIT */
+.platform-row{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.pfr{display:flex;align-items:center;gap:6px;background:var(--bg3);border-radius:6px;padding:6px 10px}
+.pfr-label{font-size:11px;color:var(--text3)}
+.pfr-score{font-size:13px;font-weight:700}
+.pfr-bar{height:4px;border-radius:2px;margin-top:3px;background:var(--border2);width:60px}
+.pfr-fill{height:4px;border-radius:2px}
+
+/* SCRIPT SNIPPET */
+.script-box{background:#0a0f1a;border:1px solid var(--border2);border-radius:6px;padding:12px 14px;margin-bottom:12px;font-family:var(--mono);font-size:11px;line-height:1.8;color:var(--text2)}
+.script-action{color:var(--text3);font-style:italic}
+.script-char{color:var(--amber);font-weight:700}
+.script-line{color:var(--text)}
+
+/* EMOTION MAP */
+.emotion-map{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.emotion-chip{font-size:11px;padding:4px 10px;border-radius:4px;font-weight:500}
+
+/* SERIES CARD */
+.scard{background:var(--bg2);border:1px solid var(--border);border-radius:8px;margin-bottom:10px;overflow:hidden}
+.scard-head{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.scard-title{font-size:14px;font-weight:600;color:var(--text)}
+.scard-meta{display:flex;gap:10px;flex-shrink:0}
+.smeta-item{text-align:right}
+.smeta-label{font-size:9px;font-family:var(--mono);color:var(--text3);text-transform:uppercase}
+.smeta-val{font-size:15px;font-weight:700}
+.scard-body{padding:14px 16px}
+.hooks-title{font-size:10px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+.hook-card{background:var(--bg4);border:1px solid var(--border);border-radius:6px;padding:10px 12px;margin-bottom:6px}
+.hook-type{font-size:10px;font-family:var(--mono);padding:2px 7px;border-radius:20px;margin-bottom:6px;display:inline-block}
+.hook-type.visual{background:#1e3a5f;color:var(--blue)}
+.hook-type.dialogue{background:#2d1a4a;color:var(--purple)}
+.hook-type.conflict{background:#450a0a;color:#fca5a5}
+.hook-type.emotion{background:#14532d;color:#86efac}
+.hook-type.cliffhanger{background:#451a03;color:var(--amber)}
+.hook-text{font-size:13px;color:var(--text);line-height:1.5;margin-bottom:6px}
+.hook-why{font-size:11px;color:var(--text3);font-style:italic;line-height:1.4}
+.hook-metrics{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+.hm{font-size:11px;padding:2px 8px;border-radius:4px;background:var(--bg3);color:var(--text2)}
+
+/* COMPETITOR */
+.comp-card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;margin-bottom:8px;overflow:hidden}
+.comp-head{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.comp-name{font-size:13px;font-weight:600;color:var(--text)}
+.comp-platform{font-size:10px;padding:2px 7px;border-radius:4px;background:var(--bg3);color:var(--text3)}
+.comp-body{padding:12px 16px}
+.comp-gap{font-size:12px;padding:8px 12px;background:#450a0a30;border-left:2px solid var(--red);border-radius:4px;color:#fca5a5;margin-top:8px}
+
+/* ORGANIC */
+.ocard{background:var(--bg2);border:1px solid var(--border);border-radius:8px;margin-bottom:10px;overflow:hidden}
+.ocard-head{padding:12px 16px;display:flex;align-items:flex-start;gap:10px;border-bottom:1px solid var(--border)}
+.ocard-body{padding:12px 16px}
+.ocard-hook{font-size:13px;color:var(--text);line-height:1.5;margin-bottom:8px}
+.ocard-why{font-size:12px;color:var(--text3);font-style:italic;line-height:1.4;margin-bottom:8px;padding-left:10px;border-left:2px solid var(--red)}
+.scene-template{font-size:12px;color:var(--green);padding:8px 12px;background:#14532d20;border-radius:4px;margin-bottom:8px}
+.ometrics{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+
+.badge{font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;vertical-align:middle}
+.b-gold{background:#92400e40;color:var(--amber);border:1px solid #92400e60}
+.b-tk{background:#be185d20;color:var(--pink)}
+.b-ig{background:#92400e20;color:#fb923c}
+.b-yt{background:#991b1b20;color:#f87171}
+.b-paid{background:#1e3a5f;color:var(--blue)}
+.b-org{background:#14532d;color:var(--green)}
+.htag{font-size:11px;color:var(--teal);margin-right:6px}
+.chip{font-size:11px;padding:3px 8px;border-radius:4px;background:var(--bg3);border:1px solid var(--border2);color:var(--text3);margin:2px;display:inline-block}
+
+/* SUMMARY */
+.sum-card{background:var(--bg2);border:1px solid #4c1d9540;border-radius:8px;padding:18px 20px}
+.sum-section{margin-bottom:16px}
+.sum-label{font-size:10px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+.hpill{display:inline-block;font-size:11px;padding:4px 10px;border-radius:4px;background:#14532d;color:#86efac;margin:2px}
+.apill{display:inline-block;font-size:11px;padding:4px 10px;border-radius:4px;background:#450a0a;color:#fca5a5;margin:2px}
+.rec{border-top:1px solid var(--border);padding-top:14px;font-size:13px;color:var(--text);line-height:1.7}
+.cnote{background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:10px 14px;margin-top:10px;font-size:12px;color:var(--text2);line-height:1.6}
+.cnote strong{color:var(--text)}
+
+/* TYPES */
+.tcard{border-radius:8px;padding:14px 16px;margin-bottom:10px;border:1px solid}
+.tcard.tp{border-color:#1e40af40;background:#1e3a5f20}
+.tcard.to{border-color:#92400e40;background:#92400e15}
+.tcard.tv{border-color:#7c3aed40;background:#7c3aed10}
+.ttitle{font-size:13px;font-weight:600;margin-bottom:6px}
+.tdesc{font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:10px}
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div style="display:flex;align-items:center">
+    <span class="logo">MYDRAMA ✦ HOLYWATER</span>
+    <span class="htitle">AI Research Dashboard</span>
+  </div>
+  <div class="pills">
+    <span class="spill ai" id="pill-sp">○ Social Peta · AI sim</span>
+    <span class="spill ai" id="pill-ap">○ Apify · AI sim</span>
+    <span class="spill ai" id="pill-drive" style="display:none">○ Drive · —</span>
+  </div>
+</header>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div>
+      <label class="flabel">Setting ✦</label>
+      <select id="setting">
+        <option value="">Select...</option>
+        <option>Mafia</option><option>Historical</option><option>Sports</option>
+        <option>Fantasy</option><option>Office</option><option>Vampire</option>
+        <option>Royal Court</option><option>Small Town</option><option>Medical</option>
+        <option>Military</option><option>College</option><option>Supernatural</option>
+      </select>
+    </div>
+    <div>
+      <label class="flabel">Genre / Tropes ✦</label>
+      <div class="tags" id="tagRow">
+        <div class="tag" data-v="Romance">Romance</div>
+        <div class="tag" data-v="Revenge">Revenge</div>
+        <div class="tag" data-v="Billionaire">Billionaire</div>
+        <div class="tag" data-v="Enemies-to-Lovers">Enemies-to-Lovers</div>
+        <div class="tag" data-v="Thriller">Thriller</div>
+        <div class="tag" data-v="Found Family">Found Family</div>
+        <div class="tag" data-v="Forbidden Love">Forbidden Love</div>
+        <div class="tag" data-v="Second Chance">Second Chance</div>
+        <div class="tag" data-v="Dark Romance">Dark Romance</div>
+        <div class="tag" data-v="Fake Dating">Fake Dating</div>
+        <div class="tag" data-v="Forced Proximity">Forced Proximity</div>
+        <div class="tag" data-v="Alpha Male">Alpha Male</div>
+      </div>
+    </div>
+    <div>
+      <label class="flabel">Target Platform</label>
+      <select id="targetPlatform">
+        <option value="all">All platforms</option>
+        <option value="TikTok">TikTok</option>
+        <option value="Instagram Reels">Instagram Reels</option>
+        <option value="YouTube Shorts">YouTube Shorts</option>
+      </select>
+    </div>
+    <div>
+      <label class="flabel">Internal Base — Google Drive</label>
+      <input type="text" id="driveUrl" placeholder="Paste Google Doc / Sheet link">
+      <p class="api-note">File → Share → <strong style="color:var(--text2)">Anyone with link</strong> → copy URL</p>
+      <div id="driveStatus" style="display:none;margin-top:6px;font-size:11px;padding:4px 8px;border-radius:4px"></div>
+    </div>
+    <div>
+      <label class="flabel">API Keys</label>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div>
+          <label class="flabel" style="margin-bottom:4px">Social Peta</label>
+          <input type="password" id="spKey" placeholder="sp_live_xxxx">
+          <p class="api-note">Add when you get access</p>
+        </div>
+        <div>
+          <label class="flabel" style="margin-bottom:4px">Apify Token</label>
+          <input type="password" id="apifyKey" placeholder="apify_api_xxxx">
+          <p class="api-note"><a href="https://console.apify.com/account/integrations" target="_blank">console.apify.com</a> → Settings → Integrations</p>
+        </div>
+      </div>
+    </div>
+    <button class="run-btn" id="runBtn" onclick="handleRun()">✦ RUN RESEARCH</button>
+  </aside>
+
+  <main class="main">
+    <nav class="tab-bar" id="tabBar" style="display:none">
+      <button class="tbtn on" data-tab="playbook" onclick="setTab('playbook')">🎯 Hook Playbook</button>
+      <button class="tbtn" data-tab="paid" onclick="setTab('paid')">📊 Social Peta</button>
+      <button class="tbtn" data-tab="organic" onclick="setTab('organic')">🎬 Organic</button>
+      <button class="tbtn" data-tab="competitors" onclick="setTab('competitors')">🔍 Competitors</button>
+      <button class="tbtn" data-tab="internal" onclick="setTab('internal')">🗂 Internal Base</button>
+      <button class="tbtn" data-tab="types" onclick="setTab('types')">📖 Content Types</button>
+      <button class="tbtn" data-tab="summary" onclick="setTab('summary')">✦ AI Summary</button>
+    </nav>
+    <div class="content" id="mainContent">
+      <div class="empty">
+        <div style="font-size:36px;opacity:.15">✦</div>
+        <div class="etitle">Select setting and genre</div>
+        <div class="esub">Click "Run Research" to generate your creative brief</div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+const sel = new Set();
+let activeTab = 'playbook';
+let lastData = null;
+
+document.querySelectorAll('.tag').forEach(t => {
+  t.addEventListener('click', () => {
+    t.classList.toggle('on');
+    sel.has(t.dataset.v) ? sel.delete(t.dataset.v) : sel.add(t.dataset.v);
+  });
+});
+
+function setTab(name) {
+  activeTab = name;
+  document.querySelectorAll('.tbtn').forEach(b => b.classList.toggle('on', b.dataset.tab === name));
+  if (lastData) renderPanel(name, lastData);
+}
+
+async function handleRun() {
+  const setting = document.getElementById('setting').value;
+  if (!setting || sel.size === 0) { alert('Select a setting and at least one genre'); return; }
+  const spKey        = document.getElementById('spKey').value.trim();
+  const apifyKey     = document.getElementById('apifyKey').value.trim();
+  const driveUrl     = document.getElementById('driveUrl').value.trim();
+  const targetPlatform = document.getElementById('targetPlatform').value;
+  const genres       = Array.from(sel).join(', ');
+
+  setLoading(true);
+  updatePills('checking','checking');
+
+  try {
+    const [spData, apifyData, driveText] = await Promise.all([
+      spKey    ? fetchSocialPeta(spKey, setting, genres)  : Promise.resolve(null),
+      apifyKey ? fetchApify(apifyKey, setting, genres)    : Promise.resolve(null),
+      driveUrl ? fetchGoogleDrive(driveUrl)               : Promise.resolve(null),
+    ]);
+
+    updatePills(spData ? 'live' : 'ai', apifyData ? 'live' : 'ai');
+
+    const drivePill = document.getElementById('pill-drive');
+    drivePill.style.display = 'inline-block';
+    if (driveText) {
+      drivePill.className = 'spill live';
+      drivePill.textContent = '● Drive · live';
+      showDriveStatus('✓ Document read — ' + driveText.length + ' chars', 'ok');
+    } else if (driveUrl) {
+      drivePill.className = 'spill warn';
+      drivePill.textContent = '○ Drive · error';
+      showDriveStatus('⚠ Could not read. Check: File → Share → Anyone with link', 'err');
+    }
+
+    setLoaderMsg('✨ Generating hook analysis & scripts...');
+    const aiData = await fetchAI(setting, genres, targetPlatform, driveText);
+
+    lastData = {
+      paid:        spData    || aiData.paid,
+      organic:     apifyData ? [...apifyData, ...aiData.organic.slice(apifyData.length)] : aiData.organic,
+      internal:    aiData.internal,
+      competitors: aiData.competitors,
+      playbook:    aiData.playbook,
+      kpis:        aiData.kpis,
+      summary:     aiData.summary,
+      driveUsed:   !!driveText,
+      setting, genres, targetPlatform,
+    };
+
+    setLoading(false);
+    document.getElementById('tabBar').style.display = 'flex';
+    setTab('playbook');
+  } catch(e) {
+    setLoading(false);
+    showError(e.message);
+  }
+}
+
+// ─── SOURCES ──────────────────────────────────────────────
+async function fetchSocialPeta(key, setting, genres) {
+  setLoaderMsg('⏳ Connecting to Social Peta...');
+  try {
+    const r = await fetch(`https://api.socialpeta.com/v2/creatives/search?` + new URLSearchParams({
+      keyword:`${setting} ${genres}`,sort:'impressions',limit:'25',type:'video'
+    }), { headers:{'Authorization':`Bearer ${key}`} });
+    if (!r.ok) return null;
+    const d = await r.json();
+    if (!d.creatives?.length) return null;
+    const byAdv = {};
+    d.creatives.forEach(c => {
+      const k = c.advertiser_name || 'Unknown';
+      if (!byAdv[k]) byAdv[k] = {title:k,imp:0,days:0,gold:false,cres:[]};
+      byAdv[k].imp  = Math.max(byAdv[k].imp,  c.impressions||0);
+      byAdv[k].days = Math.max(byAdv[k].days, c.run_days||0);
+      byAdv[k].gold = byAdv[k].gold||(c.rank_rate<=0.1);
+      byAdv[k].cres.push({text:c.creative_text||c.title||'',days:c.run_days||0,imp:c.impressions||0});
+    });
+    return Object.values(byAdv).sort((a,b)=>b.imp-a.imp).slice(0,5).map(s=>({
+      title:s.title, impressions:fmtN(s.imp), run_days:s.days, gold_frame:s.gold,
+      hooks:s.cres.slice(0,5).map(c=>({text:c.text,days:c.days,impressions:fmtN(c.imp),type:'cliffhanger',why:'High run duration = strong retention'}))
+    }));
+  } catch { return null; }
+}
+
+async function fetchApify(token, setting, genres) {
+  setLoaderMsg('⏳ Scraping TikTok / Instagram...');
+  const PROXY = '/.netlify/functions/apify-proxy';
+  try {
+    const tag = (setting+genres.split(',')[0]).toLowerCase().replace(/[^a-z]/g,'');
+    const startR = await fetch(PROXY, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ action:'start', token, hashtags:[tag, setting.toLowerCase()] })
+    });
+    if (!startR.ok) return null;
+    const startData = await startR.json();
+    const runId = startData?.data?.id;
+    if (!runId) return null;
+    for (let i=0;i<18;i++) {
+      await sleep(5000);
+      const statusR = await fetch(PROXY, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ action:'status', token, runId })
+      });
+      const statusData = await statusR.json();
+      const st = statusData?.data;
+      if (st?.status==='SUCCEEDED') {
+        const resultsR = await fetch(PROXY, {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ action:'results', token, datasetId: st.defaultDatasetId })
+        });
+        const items = await resultsR.json();
+        return items.filter(v=>(v.playCount||0)>=1000000)
+          .sort((a,b)=>(b.playCount||0)-(a.playCount||0)).slice(0,5)
+          .map(v=>({
+            title:(v.text||'TikTok video').slice(0,60), platform:'TikTok',
+            views:fmtN(v.playCount||0),
+            er:v.playCount?((v.diggCount||0)/v.playCount*100).toFixed(1)+'%':'n/a',
+            shares:fmtN(v.shareCount||0), comments:fmtN(v.commentCount||0),
+            hook:(v.text||'').split(/[.!?]/)[0].slice(0,80),
+            hook_type:'visual', why:'Organic viral — no ad spend, pure emotional trigger',
+            hashtags:(v.hashtags||[]).slice(0,4).map(h=>h.name||h),
+            url:v.webVideoUrl||''
+          }));
+      }
+      if (st?.status==='FAILED'||st?.status==='ABORTED') return null;
+    }
+    return null;
+  } catch { return null; }
+}
+
+async function fetchGoogleDrive(url) {
+  setLoaderMsg('⏳ Reading Google Drive document...');
+  try {
+    const id = extractDriveId(url);
+    if (!id) { showDriveStatus('⚠ Could not extract file ID from URL', 'err'); return null; }
+    const r = await fetch(`https://docs.google.com/document/d/${id}/export?format=txt`);
+    if (!r.ok) {
+      const r2 = await fetch(`https://docs.google.com/spreadsheets/d/${id}/export?format=csv`);
+      if (!r2.ok) return null;
+      return (await r2.text()).slice(0, 8000);
+    }
+    return (await r.text()).slice(0, 8000);
+  } catch { return null; }
+}
+
+function extractDriveId(url) {
+  for (const p of [/\/d\/([a-zA-Z0-9_-]{25,})/,/id=([a-zA-Z0-9_-]{25,})/,/\/folders\/([a-zA-Z0-9_-]{25,})/]) {
+    const m = url.match(p); if (m) return m[1];
+  }
+  return null;
+}
+
+function showDriveStatus(msg, type) {
+  const el = document.getElementById('driveStatus');
+  el.style.display='block';
+  el.style.background = type==='ok'?'#14532d40':'#450a0a40';
+  el.style.color = type==='ok'?'#86efac':'#fca5a5';
+  el.textContent = msg;
+}
+
+// ─── CLAUDE AI ────────────────────────────────────────────
+async function fetchAI(setting, genres, platform, driveText) {
+  const driveCtx = driveText
+    ? `\n\nINTERNAL BASE (real data from team Google Drive — use as primary source for "internal" section and enrich playbook with patterns from this):\n---\n${driveText}\n---`
+    : '';
+
+  const r = await fetch('https://api.anthropic.com/v1/messages', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({
+      model:'claude-sonnet-4-20250514', max_tokens:2500,
+      messages:[{role:'user', content:`You are a senior creative producer at MyDrama, a vertical drama series platform. Generate a detailed, ACTIONABLE creative research report. Return ONLY valid JSON (no markdown, no backticks).
+
+Setting: ${setting}
+Genres/Tropes: ${genres}
+Target Platform: ${platform}${driveCtx}
+
+JSON structure:
+{
+  "kpis": {
+    "market_size": "estimated monthly views in niche e.g. 2.4B",
+    "avg_er": "average ER for top content in this niche",
+    "trend": "rising|falling|stable",
+    "trend_note": "one sentence why",
+    "top_emotion": "the single dominant emotion driving virality",
+    "optimal_hook_window": "e.g. first 2.5 seconds"
+  },
+  "playbook": [
+    {
+      "rank": 1,
+      "hook_title": "Short name e.g. The Betrayal Freeze",
+      "hook_text": "SPECIFIC scene description — not generic. e.g. She opens the door and freezes. He's kissing her best friend. 2-second hold on her face. Cut to black.",
+      "hook_type": "cliffhanger|visual|dialogue|conflict|emotion",
+      "timing": {
+        "sec_0_3": "exact action in first 3 seconds",
+        "sec_3_7": "what happens next",
+        "sec_7_15": "escalation",
+        "sec_15_plus": "cliffhanger or CTA"
+      },
+      "platform_fit": {
+        "TikTok": 85,
+        "Instagram": 72,
+        "YouTube": 60
+      },
+      "emotion": "jealousy|desire|shock|revenge|tension|curiosity",
+      "why_works": "Psychological mechanism specific to this genre+setting audience",
+      "script_snippet": {
+        "action": "Scene direction in 1-2 lines",
+        "character_a": "Character name",
+        "line_a": "Dialogue line",
+        "character_b": "Character name",
+        "line_b": "Response line"
+      },
+      "expected_er": "e.g. 6-9%",
+      "expected_views": "e.g. 2-5M",
+      "references": ["proof source 1", "proof source 2"],
+      "avoid": "Common mistake when using this hook pattern"
+    }
+  ],
+  "paid": [
+    {
+      "title": "Series name",
+      "impressions": "45M",
+      "run_days": 42,
+      "gold_frame": true,
+      "ctr": "3.2%",
+      "completion_rate": "67%",
+      "hooks": [
+        {
+          "text": "Specific hook description",
+          "type": "cliffhanger",
+          "timing": "0-3 sec",
+          "why": "Why this retains audience",
+          "impressions": "12M",
+          "run_days": 38
+        }
+      ]
+    }
+  ],
+  "organic": [
+    {
+      "title": "Video description",
+      "platform": "TikTok",
+      "views": "3.2M",
+      "er": "8.4%",
+      "shares": "45K",
+      "comments": "12K",
+      "hook": "The specific hook",
+      "hook_type": "dialogue",
+      "why": "Psychological reason this triggered shares",
+      "emotion": "jealousy",
+      "scene_template": "How to recreate this in a new script",
+      "hashtags": ["tag1", "tag2"]
+    }
+  ],
+  "competitors": [
+    {
+      "name": "Competitor platform/series name",
+      "platform": "ReelShort|DramaBox|FlexTV",
+      "genre_match": "${genres}",
+      "monthly_views": "estimated",
+      "top_hook": "Their most effective hook pattern",
+      "strength": "What they do well",
+      "gap": "What they're missing that we can own"
+    }
+  ],
+  "internal": [
+    {
+      "title": "Creative concept name",
+      "type": "paid",
+      "result": "Specific metric result",
+      "hooks": [
+        { "text": "hook text", "type": "conflict", "performance": "metric" }
+      ]
+    }
+  ],
+  "summary": {
+    "market_size": "2.4B monthly views",
+    "top_emotion": "jealousy",
+    "avg_hook_timing": "first 2.5 seconds",
+    "patterns": "2-3 sentences on what consistently works",
+    "working_hooks": ["specific hook type 1", "specific hook type 2", "specific hook type 3", "specific hook type 4"],
+    "avoid": ["specific mistake + reason", "specific mistake + reason"],
+    "recommendation": "1-2 specific sentences on exactly what to build"
+  }
+}
+
+Be SPECIFIC. "She walks into the room" is bad. "She sees him kissing her sister — 2-second freeze on her face before cut to black" is good.
+5 items for paid/organic/internal/competitors, 5 for playbook.`}]
+    })
+  });
+  const d = await r.json();
+  const txt = d.content?.find(b=>b.type==='text')?.text||'';
+  return JSON.parse(txt.replace(/```json|```/g,'').trim());
+}
+
+// ─── RENDER ───────────────────────────────────────────────
+function renderPanel(tab, data) {
+  const el = document.getElementById('mainContent');
+  if (tab==='playbook')    el.innerHTML = renderPlaybook(data);
+  if (tab==='paid')        el.innerHTML = renderPaid(data.paid);
+  if (tab==='organic')     el.innerHTML = renderOrganic(data.organic);
+  if (tab==='competitors') el.innerHTML = renderCompetitors(data.competitors);
+  if (tab==='internal')    el.innerHTML = renderInternal(data.internal, data.driveUsed);
+  if (tab==='types')       el.innerHTML = renderTypes();
+  if (tab==='summary')     el.innerHTML = renderSummary(data.summary);
+}
+
+function htBadge(type) {
+  const t = type||'visual';
+  return `<span class="hook-type ${t}">${t}</span>`;
+}
+
+function renderPlaybook(data) {
+  const kpis = data.kpis || {};
+  const trendIcon = kpis.trend==='rising'?'↑':kpis.trend==='falling'?'↓':'→';
+  const trendClass = kpis.trend==='rising'?'trend-up':kpis.trend==='falling'?'trend-down':'trend-flat';
+  const genreTags = (data.genres||'').split(',').map(g=>`<span class="chip">${g.trim()}</span>`).join('');
+
+  return `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+      <span style="font-size:13px;font-weight:600">${data.setting}</span>
+      ${genreTags}
+      <span style="font-size:12px;color:var(--text3)">·</span>
+      <span style="font-size:12px;color:var(--text3)">${data.targetPlatform||'All platforms'}</span>
+    </div>
+
+    <div class="kpi-bar">
+      <div class="kpi"><div class="kpi-label">Market size</div><div class="kpi-val" style="color:var(--blue);font-size:16px">${kpis.market_size||'—'}</div><div class="kpi-sub">monthly views</div></div>
+      <div class="kpi"><div class="kpi-label">Avg ER</div><div class="kpi-val" style="color:var(--purple)">${kpis.avg_er||'—'}</div><div class="kpi-sub">top content</div></div>
+      <div class="kpi"><div class="kpi-label">Trend</div><div class="kpi-val ${trendClass}">${trendIcon} ${kpis.trend||'—'}</div><div class="kpi-sub" style="font-size:10px">${kpis.trend_note||''}</div></div>
+      <div class="kpi"><div class="kpi-label">Top emotion</div><div class="kpi-val" style="color:var(--pink);font-size:14px">${kpis.top_emotion||'—'}</div><div class="kpi-sub">drives virality</div></div>
+      <div class="kpi"><div class="kpi-label">Hook window</div><div class="kpi-val" style="color:var(--amber);font-size:14px">${kpis.optimal_hook_window||'—'}</div><div class="kpi-sub">optimal timing</div></div>
+    </div>
+
+    <div class="shead">Top 5 hook patterns for your next viral video</div>
+    ${(data.playbook||[]).map(p => {
+      const t = p.timing||{};
+      const pf = p.platform_fit||{};
+      const ss = p.script_snippet||{};
+      const pfMax = Math.max(pf.TikTok||0, pf.Instagram||0, pf.YouTube||0);
+      return `<div class="playbook">
+        <div class="pb-head">
+          <div class="pb-num">${p.rank}</div>
+          <div style="flex:1">
+            <div class="pb-title">${p.hook_title}</div>
+            <div style="margin-top:5px;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+              ${htBadge(p.hook_type)}
+              ${p.emotion?`<span style="font-size:11px;color:var(--pink)">emotion: ${p.emotion}</span>`:''}
+            </div>
+          </div>
+          <div style="display:flex;gap:12px;flex-shrink:0">
+            <div style="text-align:right">
+              <div style="font-size:9px;font-family:var(--mono);color:var(--text3);text-transform:uppercase">Exp. ER</div>
+              <div style="font-size:15px;font-weight:700;color:var(--green)">${p.expected_er||'—'}</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:9px;font-family:var(--mono);color:var(--text3);text-transform:uppercase">Exp. Views</div>
+              <div style="font-size:15px;font-weight:700;color:var(--blue)">${p.expected_views||'—'}</div>
+            </div>
+          </div>
+        </div>
+        <div class="pb-body">
+          <div class="pb-hook">"${p.hook_text}"</div>
+
+          ${t.sec_0_3?`<div class="timing-grid">
+            <div class="timing-cell" style="border-color:var(--red)"><div class="timing-label">0–3 sec</div><div class="timing-text">${t.sec_0_3}</div></div>
+            <div class="timing-cell" style="border-color:var(--amber)"><div class="timing-label">3–7 sec</div><div class="timing-text">${t.sec_3_7||'—'}</div></div>
+            <div class="timing-cell" style="border-color:var(--purple)"><div class="timing-label">7–15 sec</div><div class="timing-text">${t.sec_7_15||'—'}</div></div>
+            <div class="timing-cell" style="border-color:var(--blue)"><div class="timing-label">15+ sec</div><div class="timing-text">${t.sec_15_plus||'—'}</div></div>
+          </div>`:''}
+
+          ${pf.TikTok?`<div class="platform-row">
+            ${[['TikTok',pf.TikTok,'var(--pink)'],['Instagram',pf.Instagram,'#fb923c'],['YouTube',pf.YouTube,'#f87171']].map(([name,score,color])=>`
+              <div class="pfr">
+                <div>
+                  <div class="pfr-label">${name}</div>
+                  <div class="pfr-bar"><div class="pfr-fill" style="width:${score}%;background:${color}"></div></div>
+                </div>
+                <div class="pfr-score" style="color:${color}">${score}%</div>
+              </div>`).join('')}
+          </div>`:''}
+
+          ${ss.line_a?`<div style="font-size:10px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;margin-bottom:6px">Script snippet</div>
+          <div class="script-box">
+            <div class="script-action">${ss.action||''}</div>
+            ${ss.character_a?`<div style="margin-top:6px"><span class="script-char">${ss.character_a}</span><br><span class="script-line">"${ss.line_a}"</span></div>`:''}
+            ${ss.character_b?`<div style="margin-top:4px"><span class="script-char">${ss.character_b}</span><br><span class="script-line">"${ss.line_b}"</span></div>`:''}
+          </div>`:''}
+
+          <div style="font-size:12px;color:var(--text2);line-height:1.5;margin-bottom:10px">${p.why_works||''}</div>
+
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <span style="font-size:10px;color:var(--text3)">Proof:</span>
+              ${(p.references||[]).map(r=>`<span class="chip">${r}</span>`).join('')}
+            </div>
+          </div>
+          ${p.avoid?`<div style="margin-top:10px;font-size:11px;color:#fca5a5;padding:7px 10px;background:#450a0a30;border-radius:4px;border-left:2px solid var(--red)">⚠ Avoid: ${p.avoid}</div>`:''}
+        </div>
+      </div>`;
+    }).join('')}`;
+}
+
+function renderPaid(items) {
+  return `<div class="shead">Top 5 series + creative hooks (Social Peta)</div>` +
+  (items||[]).map((s,i) => `
+    <div class="scard">
+      <div class="scard-head">
+        <div>
+          <div class="scard-title">
+            <span style="font-size:11px;color:var(--text3);margin-right:5px">${i+1}.</span>${s.title}
+            ${s.gold_frame?'<span class="badge b-gold" style="margin-left:8px">⭐ Gold Frame</span>':''}
+          </div>
+          <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">
+            ${s.ctr?`<span class="chip">CTR ${s.ctr}</span>`:''}
+            ${s.completion_rate?`<span class="chip">Completion ${s.completion_rate}</span>`:''}
+          </div>
+        </div>
+        <div class="scard-meta">
+          <div class="smeta-item"><div class="smeta-label">Impressions</div><div class="smeta-val" style="color:var(--blue)">${s.impressions}</div></div>
+          <div class="smeta-item"><div class="smeta-label">Run days</div><div class="smeta-val" style="color:var(--purple)">${s.run_days}d</div></div>
+        </div>
+      </div>
+      <div class="scard-body">
+        <div class="hooks-title">Top creative hooks</div>
+        ${(s.hooks||[]).map(h => {
+          if (typeof h==='string') return `<div class="hook-card"><div class="hook-text">${h}</div></div>`;
+          return `<div class="hook-card">${htBadge(h.type)}<div class="hook-text">${h.text}</div>${h.why?`<div class="hook-why">${h.why}</div>`:''}<div class="hook-metrics">${h.impressions?`<span class="hm">👁 ${h.impressions}</span>`:''} ${h.days?`<span class="hm">📅 ${h.days}d</span>`:''} ${h.timing?`<span class="hm">⏱ ${h.timing}</span>`:''}</div></div>`;
+        }).join('')}
+      </div>
+    </div>`).join('');
+}
+
+function renderOrganic(items) {
+  return `<div class="shead">Top 5 viral videos — hook analysis</div>` +
+  (items||[]).map((v,i) => {
+    const bc = v.platform==='TikTok'?'b-tk':v.platform==='Instagram'?'b-ig':'b-yt';
+    return `<div class="ocard">
+      <div class="ocard-head">
+        <div style="flex:1">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">
+            <span style="font-size:11px;color:var(--text3)">${i+1}.</span>
+            <span class="badge b-plat ${bc}">${v.platform}</span>
+            ${v.hook_type?htBadge(v.hook_type):''}
+            ${v.emotion?`<span style="font-size:10px;color:var(--pink)">emotion: ${v.emotion}</span>`:''}
+          </div>
+          <div style="font-size:13px;font-weight:500">${v.title}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:20px;font-weight:700;color:var(--blue)">${v.views}</div>
+          <div style="font-size:9px;color:var(--text3);font-family:var(--mono)">VIEWS</div>
+        </div>
+      </div>
+      <div class="ocard-body">
+        <div class="ometrics">
+          <span style="font-size:12px;color:var(--purple)">ER ${v.er}</span>
+          ${v.shares?`<span style="font-size:12px;color:var(--teal)">↗ ${v.shares} shares</span>`:''}
+          ${v.comments?`<span style="font-size:12px;color:var(--text2)">💬 ${v.comments}</span>`:''}
+        </div>
+        <div class="ocard-hook">${v.hook}</div>
+        ${v.why?`<div class="ocard-why">${v.why}</div>`:''}
+        ${v.scene_template?`<div class="scene-template"><span style="font-size:10px;font-family:var(--mono);color:var(--text3);display:block;margin-bottom:3px">SCENE TEMPLATE</span>${v.scene_template}</div>`:''}
+        <div>${(v.hashtags||[]).map(h=>`<span class="htag">#${typeof h==='string'?h:h.name||h}</span>`).join('')}</div>
+        ${v.url?`<a href="${v.url}" target="_blank" style="font-size:11px;color:var(--text3);margin-top:8px;display:block">↗ open video</a>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderCompetitors(items) {
+  return `<div class="shead">Competitor landscape</div>` +
+  (items||[]).map((c,i) => `
+    <div class="comp-card">
+      <div class="comp-head">
+        <div>
+          <span style="font-size:11px;color:var(--text3);margin-right:5px">${i+1}.</span>
+          <span class="comp-name">${c.name}</span>
+          <span class="badge b-paid" style="margin-left:8px">${c.platform||''}</span>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:9px;font-family:var(--mono);color:var(--text3)">MONTHLY VIEWS</div>
+          <div style="font-size:14px;font-weight:700;color:var(--blue)">${c.monthly_views||'—'}</div>
+        </div>
+      </div>
+      <div class="comp-body">
+        <div style="font-size:12px;color:var(--text2);margin-bottom:8px">
+          <span style="color:var(--text3);font-size:10px;font-family:var(--mono);text-transform:uppercase">Top hook: </span>${c.top_hook||'—'}
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+          <div style="flex:1;min-width:140px;background:var(--bg3);border-radius:6px;padding:8px 10px">
+            <div style="font-size:10px;font-family:var(--mono);color:var(--green);text-transform:uppercase;margin-bottom:4px">Their strength</div>
+            <div style="font-size:12px;color:var(--text2)">${c.strength||'—'}</div>
+          </div>
+        </div>
+        <div class="comp-gap">
+          <span style="font-size:10px;font-family:var(--mono);text-transform:uppercase;display:block;margin-bottom:3px">Gap we can own →</span>
+          ${c.gap||'—'}
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function renderInternal(items, driveUsed) {
+  const note = driveUsed
+    ? `<div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;padding:8px 12px;background:#14532d20;border:1px solid #14532d60;border-radius:6px;font-size:12px;color:#86efac">● Data loaded from your Google Drive document</div>`
+    : `<div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;padding:8px 12px;background:#2d1a4a30;border:1px solid #4c1d9540;border-radius:6px;font-size:12px;color:var(--purple)">○ AI simulation — connect Google Drive for real team data</div>`;
+  return `<div class="shead">Internal creative base</div>${note}` +
+  (items||[]).map((c,i) => `
+    <div class="scard">
+      <div class="scard-head">
+        <div class="scard-title">
+          <span style="font-size:11px;color:var(--text3);margin-right:5px">${i+1}.</span>${c.title}
+          <span class="badge ${c.type==='paid'?'b-paid':'b-org'}" style="margin-left:8px">${c.type}</span>
+        </div>
+      </div>
+      <div class="scard-body">
+        <div style="font-size:12px;color:var(--text2);margin-bottom:10px">${c.result}</div>
+        ${(c.hooks||[]).map(h => {
+          if (typeof h==='string') return `<div class="hook-card"><div class="hook-text">${h}</div></div>`;
+          return `<div class="hook-card">${htBadge(h.type)}<div class="hook-text">${h.text}</div>${h.performance?`<div class="hook-metrics"><span class="hm">📈 ${h.performance}</span></div>`:''}</div>`;
+        }).join('')}
+      </div>
+    </div>`).join('');
+}
+
+function renderSummary(s) {
+  if (!s) return '<div class="empty"><div class="etitle">No data</div></div>';
+  return `
+    <div class="shead">AI Summary</div>
+    ${s.market_size||s.top_emotion ? `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px">
+      ${s.market_size?`<div class="kpi"><div class="kpi-label">Market size</div><div class="kpi-val" style="color:var(--blue);font-size:14px">${s.market_size}</div></div>`:''}
+      ${s.top_emotion?`<div class="kpi"><div class="kpi-label">Top emotion</div><div class="kpi-val" style="color:var(--pink);font-size:14px">${s.top_emotion}</div></div>`:''}
+      ${s.avg_hook_timing?`<div class="kpi"><div class="kpi-label">Hook timing</div><div class="kpi-val" style="color:var(--amber);font-size:14px">${s.avg_hook_timing}</div></div>`:''}
+    </div>` : ''}
+    <div class="sum-card">
+      <div class="sum-section"><div class="sum-label">Pattern analysis</div><p style="font-size:13px;color:var(--text);line-height:1.7">${s.patterns}</p></div>
+      <div class="sum-section"><div class="sum-label">What works</div>${(s.working_hooks||[]).map(h=>`<span class="hpill">${h}</span>`).join('')}</div>
+      <div class="sum-section"><div class="sum-label">What to avoid</div>${(s.avoid||[]).map(a=>`<span class="apill">${a}</span>`).join('')}</div>
+      <div class="rec"><span style="font-size:10px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Recommendation → </span>${s.recommendation}</div>
+    </div>`;
+}
+
+function renderTypes() {
+  return `
+    <div class="shead">Three content types — how to tell them apart</div>
+    <div class="tcard tp">
+      <div class="ttitle" style="color:var(--blue)">① Paid creative · vertical series</div>
+      <div class="tdesc">Shot specifically for advertising — vertical 9:16. Cuts at the cliffhanger to drive clicks or app downloads. Clear hook in the first 3 seconds. Paid media budget.</div>
+      <div><span class="chip">Vertical native</span><span class="chip">Deliberate cliffhanger</span><span class="chip">Paid budget</span><span class="chip">CTA at end</span></div>
+      <div class="cnote"><strong>Social Peta tracks this type</strong> — Impressions + Run Duration. Longer run = more profitable.</div>
+    </div>
+    <div class="tcard to">
+      <div class="ttitle" style="color:#fb923c">② Organic · cropped horizontal <span style="font-weight:400;font-size:11px">(e.g. a drama series scene)</span></div>
+      <div class="tdesc">A scene from an existing series cropped to 9:16 and posted with zero budget — went viral on its own. Means the scene (dialogue, conflict, emotion) resonated by itself.</div>
+      <div><span class="chip">Cropped horizontal</span><span class="chip">Zero budget</span><span class="chip">Viral scene</span><span class="chip">1M+ views</span></div>
+      <div class="cnote"><strong>Apify collects this type</strong> from TikTok/Instagram — threshold 2M+ (TikTok) and 1M+ (Instagram).</div>
+    </div>
+    <div class="tcard tv">
+      <div class="ttitle" style="color:var(--purple)">③ Organic · viral movie moment <span style="font-weight:400;font-size:11px">(e.g. 365 Days golf scene)</span></div>
+      <div class="tdesc">A cut scene from a film or series that went viral due to sexual tension, a twist, or strong emotion. The audience spreads it themselves — shows what scene type lands with zero marketing.</div>
+      <div><span class="chip">Film clip</span><span class="chip">Character chemistry</span><span class="chip">1M+ likes</span><span class="chip">Emotional hook</span></div>
+      <div class="cnote"><strong>These are "ready-made hook templates"</strong> — the producer builds these scenes into the script from day one.</div>
+    </div>
+    <div class="cnote" style="margin-top:4px">
+      <strong>Why producers need all three together:</strong><br>
+      Paid → hook format and where to cut.<br>
+      Organic (cropped) → which scene already landed with the audience at zero cost.<br>
+      Viral film moments → which chemistry and tension to write into the script from the start.
+    </div>`;
+}
+
+// ─── HELPERS ──────────────────────────────────────────────
+const loaderMsgs = ['⏳ Checking Social Peta...','⏳ Scraping TikTok / Instagram...','⏳ Reading internal base...','✨ Generating hook analysis & scripts...'];
+let loaderTimer, loaderStep = 0;
+
+function setLoading(on) {
+  document.getElementById('runBtn').disabled = on;
+  const c = document.getElementById('mainContent');
+  if (on) {
+    loaderStep=0;
+    c.innerHTML=`<div class="loader"><div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div><span id="loaderMsg">${loaderMsgs[0]}</span></div>`;
+    loaderTimer=setInterval(()=>{loaderStep=Math.min(loaderStep+1,loaderMsgs.length-1);const el=document.getElementById('loaderMsg');if(el)el.textContent=loaderMsgs[loaderStep];},1800);
+  } else { clearInterval(loaderTimer); }
+}
+function setLoaderMsg(m){const el=document.getElementById('loaderMsg');if(el)el.textContent=m;}
+function updatePills(sp,ap){
+  const psp=document.getElementById('pill-sp'),pap=document.getElementById('pill-ap');
+  psp.className='spill '+(sp==='live'?'live':'ai');psp.textContent=sp==='live'?'● Social Peta · live':'○ Social Peta · AI sim';
+  pap.className='spill '+(ap==='live'?'live':'ai');pap.textContent=ap==='live'?'● Apify · live':'○ Apify · AI sim';
+}
+function showError(msg){document.getElementById('mainContent').innerHTML=`<div class="empty"><div class="etitle" style="color:#f87171">Error</div><div class="esub">${msg}</div></div>`;}
+function fmtN(n){if(n>=1e9)return(n/1e9).toFixed(1)+'B';if(n>=1e6)return(n/1e6).toFixed(1)+'M';if(n>=1e3)return Math.round(n/1e3)+'K';return String(n);}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+</script>
+</body>
+</html>
